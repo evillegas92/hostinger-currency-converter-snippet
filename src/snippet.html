@@ -1,0 +1,135 @@
+<section class="block">
+    <div class="block-background block-background--fixed transition-with-bg">
+        <div class="block-layout block-layout--layout">
+            <div id="token-converter-snippet"
+                class="form layout-element__component layout-element__component--GridForm">
+                <div class="text-box layout-element__component layout-element__component--GridTextBox">
+                    <h4>
+                        <span>Convierte tus Tokens a USD y COP</span>
+                    </h4>
+                </div>
+                <form onsubmit="event.preventDefault(); calculateTokenAmount();">
+                    <div class="input input--light">
+                        <label for="platform-select" class="input__label--light input__label">Plataforma</label>
+                        <select id="platform-select" class="input__component--light input__component">
+                            <option value="chaturbate">Chaturbate (tokens)</option>
+                            <option value="stripchat">Stripchat (tokens)</option>
+                            <option value="bongacams">BongaCams (tokens)</option>
+                            <option value="onlyfans">OnlyFans (USD directos)</option>
+                        </select>
+                    </div>
+                    <div class="input input--light">
+                        <label for="usd-per-token-input" class="input__label--light input__label">USD por token</label>
+                        <input id="usd-per-token-input" type="number" min="0" step="0.01" value="0.05" required
+                            class="input__component--light input__component">
+                    </div>
+                    <div class="input input--light">
+                        <label for="tokens-amount-input" class="input__label--light input__label">Tokens</label>
+                        <input id="tokens-amount-input" type="number" min="0" step="1" placeholder="Ej: 1000" required
+                            class="input__component--light input__component">
+                    </div>
+                    <div class="input input--light">
+                        <label for="trm-input" class="input__label--light input__label">TRM</label>
+                        <input id="trm-input" type="number" readonly class="input__component--light input__component">
+                    </div>
+
+                    <button id="calculate-btn" class="grid-button grid-button--primary form__button"
+                        type="submit">Calcular</button>
+
+                    <div class="input input--light">
+                        <label for="trm-input" class="input__label--light input__label">TRM</label>
+                        <input id="total-cop-result-input" type="text" readonly
+                            class="input__component--light input__component">
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    const TRM_STORAGE_KEY = "trm_usd_cop";
+
+    (async function () {
+        // This self-executing function loads the TRM when the snippet is loaded
+        let trmValue = undefined;
+        const cachedTrm = getTrmFromLocalStorage();
+        if (!cachedTrm) {
+            try {
+                trmValue = await fetchTrm();
+                saveTrmToLocalStorage(trmValue);
+            } catch (error) {
+                console.error("Error fetching TRM:", error);
+            }
+        } else {
+            trmValue = cachedTrm;
+        }
+
+        const trmInput = document.getElementById("trm-input");
+        if (trmValue) {
+            trmInput.value = trmValue.toFixed(2);
+        } else {
+            trmInput.placeholder = "No se pudo cargar la TRM. Por favor ingrésala manualmente.";
+            trmInput.removeAttribute("readonly");
+        }
+    })();
+
+    function getTrmFromLocalStorage() {
+        const trmData = localStorage.getItem(TRM_STORAGE_KEY);
+        if (!trmData) {
+            return null;
+        }
+        const parsed = JSON.parse(trmData);
+        const now = new Date();
+        if (now.getTime() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+            return parsed.value;
+        }
+        return null;
+    }
+
+    function saveTrmToLocalStorage(value) {
+        const trmData = {
+            value: value,
+            timestamp: new Date().getTime()
+        };
+        localStorage.setItem(TRM_STORAGE_KEY, JSON.stringify(trmData));
+    }
+
+    async function fetchTrm() {
+        const response = await fetch("https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=COP&apikey=0GWG9IP1VB1J3E0E");
+        const data = await response.json();
+        const valueStr = data["Realtime Currency Exchange Rate"]["5. Exchange Rate"];
+        if (isNaN(valueStr)) {
+            throw new Error("Invalid TRM value from API");
+        }
+        return parseFloat(valueStr);
+    }
+
+    function calculateTokenAmount() {
+        debugger;
+        const platformSelect = document.getElementById("platform-select");
+        const usdPerTokenInput = document.getElementById("usd-per-token-input");
+        const tokensAmountInput = document.getElementById("tokens-amount-input");
+        const trmInput = document.getElementById("trm-input");
+
+        const platform = platformSelect.value;
+        const usdPerToken = parseFloat(usdPerTokenInput.value);
+        const tokensAmount = parseFloat(tokensAmountInput.value);
+        const trm = parseFloat(trmInput.value);
+
+        let usdAmount = 0;
+        if (platform === "onlyfans") {
+            usdAmount = tokensAmount; // Direct USD input
+        } else {
+            usdAmount = tokensAmount * usdPerToken; // Tokens to USD conversion
+        }
+
+        const copAmount = usdAmount * trm;
+
+        document.getElementById("total-cop-result-input").value = formatCOP(copAmount);
+
+        return false; // Prevent form submission
+    }
+
+    const formatCOP = (v) => isNaN(v) ? "-" : new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(v);
+</script>
