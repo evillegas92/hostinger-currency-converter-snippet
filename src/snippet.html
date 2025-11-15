@@ -1,55 +1,97 @@
-<section class="block">
-    <div class="block-background block-background--fixed transition-with-bg">
-        <div class="block-layout block-layout--layout">
-            <div id="token-converter-snippet"
-                class="form layout-element__component layout-element__component--GridForm">
-                <div class="text-box layout-element__component layout-element__component--GridTextBox">
-                    <h4>
-                        <span>Convierte tus Tokens a USD y COP</span>
-                    </h4>
-                </div>
-                <form onsubmit="event.preventDefault(); calculateTokenAmount();">
-                    <div class="input input--light">
-                        <label for="platform-select" class="input__label--light input__label">Plataforma</label>
-                        <select id="platform-select" class="input__component--light input__component">
-                            <option value="chaturbate">Chaturbate (tokens)</option>
-                            <option value="stripchat">Stripchat (tokens)</option>
-                            <option value="bongacams">BongaCams (tokens)</option>
-                            <option value="onlyfans">OnlyFans (USD directos)</option>
-                        </select>
-                    </div>
-                    <div class="input input--light">
-                        <label for="usd-per-token-input" class="input__label--light input__label">USD por token</label>
-                        <input id="usd-per-token-input" type="number" min="0" step="0.01" value="0.05" required
-                            class="input__component--light input__component">
-                    </div>
-                    <div class="input input--light">
-                        <label for="tokens-amount-input" class="input__label--light input__label">Tokens</label>
-                        <input id="tokens-amount-input" type="number" min="0" step="1" placeholder="Ej: 1000" required
-                            class="input__component--light input__component">
-                    </div>
-                    <div class="input input--light">
-                        <label for="trm-input" class="input__label--light input__label">TRM</label>
-                        <input id="trm-input" type="number" readonly class="input__component--light input__component">
-                    </div>
+<style>
+    .snippet-container {
+        max-width: 860px;
+        margin: 24px auto;
+        padding: 24px;
+        border: 1px solid #EAEAF0;
+        border-radius: 16px;
+        background: #FFFFFF;
+        font-family: Inter, system-ui, Segoe UI, Roboto, Arial
+    }
 
-                    <button id="calculate-btn" class="grid-button grid-button--primary form__button"
-                        type="submit">Calcular</button>
+    .snippet-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px
+    }
 
-                    <div class="input input--light">
-                        <label for="trm-input" class="input__label--light input__label">TRM</label>
-                        <input id="total-cop-result-input" type="text" readonly
-                            class="input__component--light input__component">
-                    </div>
+    h4 {
+        margin: 0 0 6px;
+        color: #1B1F3B;
+        font-size: 22px;
+        font-weight: 700;
+    }
 
-                </form>
+    .snippet-label {
+        display: block;
+        margin: 8px 0 6px;
+        color: #1B1F3B;
+        font-weight: 600
+    }
+
+    .snippet-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #dfe3ea;
+        border-radius: 12px;
+        background: #F7F8FA;
+        color: #1B1F3B
+    }
+
+    .snippet-button {
+        width: 100%;
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 12px;
+        background: #2C7CFF;
+        color: #FFFFFF;
+        font-weight: 700;
+        cursor: pointer
+    }
+</style>
+<div class="snippet-container">
+    <h4>
+        <span>Convierte tus Tokens a USD y COP</span>
+    </h4>
+    <form onsubmit="event.preventDefault(); calculateTokenAmount();">
+        <div class="snippet-grid">
+            <div class="">
+                <label for="platform-select" class="snippet-label">Plataforma</label>
+                <select id="platform-select" class="snippet-input">
+                    <option value="chaturbate">Chaturbate (tokens)</option>
+                    <option value="stripchat">Stripchat (tokens)</option>
+                    <option value="bongacams">BongaCams (tokens)</option>
+                    <option value="onlyfans">OnlyFans (USD directos)</option>
+                </select>
             </div>
+            <div class="">
+                <label for="usd-per-token-input" class="snippet-label">USD por token</label>
+                <input id="usd-per-token-input" type="number" min="0" step="0.01" value="0.05" required
+                    class="snippet-input">
+            </div>
+            <div class="">
+                <label for="tokens-amount-input" class="snippet-label">Tokens</label>
+                <input id="tokens-amount-input" type="number" min="0" step="1" placeholder="Ej: 1000" required
+                    class="snippet-input">
+            </div>
+            <div class="">
+                <label for="trm-input" class="snippet-label">TRM</label>
+                <input id="trm-input" type="number" readonly class="snippet-input">
+            </div>
+
+            <button id="calculate-btn" class="snippet-button" type="submit">Calcular</button>
+            
+            <div class="">
+                <label for="trm-input" class="input__label--light input__label">COP</label>
+                <input id="total-cop-result-input" type="text" readonly class="snippet-input">
+            </div>
+
         </div>
-    </div>
-</section>
+    </form>
+</div>
 <script>
     const TRM_STORAGE_KEY = "trm_usd_cop";
-
+    const trmIncreaseAmount = 100;
     (async function () {
         // This self-executing function loads the TRM when the snippet is loaded
         let trmValue = undefined;
@@ -67,6 +109,7 @@
 
         const trmInput = document.getElementById("trm-input");
         if (trmValue) {
+            trmValue += trmIncreaseAmount;
             trmInput.value = trmValue.toFixed(2);
         } else {
             trmInput.placeholder = "No se pudo cargar la TRM. Por favor ingrésala manualmente.";
@@ -81,7 +124,8 @@
         }
         const parsed = JSON.parse(trmData);
         const now = new Date();
-        if (now.getTime() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+        const trmCacheInterval = (24 * 60 * 60 * 1000) / 3; // three times per day
+        if (now.getTime() - parsed.timestamp < trmCacheInterval) {
             return parsed.value;
         }
         return null;
